@@ -57,22 +57,23 @@ function rowToObj(row) {
 }
 
 async function attachTags(images) {
-  return Promise.all(
-    images.map(async (img) => {
-      const tagRes = await db.execute({
-        sql: 'SELECT category, value FROM image_tags WHERE image_id = ?',
-        args: [img.id],
-      });
-      const tags = {};
-      tagRes.rows.forEach((r) => {
-        const cat = r.category ?? r[0];
-        const val = r.value ?? r[1];
-        if (!tags[cat]) tags[cat] = [];
-        tags[cat].push(val);
-      });
-      return { ...img, tags };
-    })
-  );
+  if (!images.length) return [];
+  const ids = images.map((img) => img.id);
+  const placeholders = ids.map(() => '?').join(',');
+  const tagRes = await db.execute({
+    sql: `SELECT image_id, category, value FROM image_tags WHERE image_id IN (${placeholders})`,
+    args: ids,
+  });
+  const tagMap = {};
+  tagRes.rows.forEach((r) => {
+    const imageId = r.image_id ?? r[0];
+    const cat = r.category ?? r[1];
+    const val = r.value ?? r[2];
+    if (!tagMap[imageId]) tagMap[imageId] = {};
+    if (!tagMap[imageId][cat]) tagMap[imageId][cat] = [];
+    tagMap[imageId][cat].push(val);
+  });
+  return images.map((img) => ({ ...img, tags: tagMap[img.id] || {} }));
 }
 
 function toPlain(rows) {
@@ -116,25 +117,28 @@ router.get('/images', async (req, res) => {
 // GET /api/images/counts — must come before /:id
 router.get('/images/counts', async (req, res) => {
   try {
-    const inboxRes = await db.execute(
-      `SELECT COUNT(*) as count FROM images
-       WHERE id NOT IN (SELECT DISTINCT image_id FROM image_tags WHERE category = 'art')`
-    );
-    const inbox = Number(inboxRes.rows[0]?.count ?? inboxRes.rows[0]?.[0] ?? 0);
+    const [inboxRes, artRes] = await Promise.all([
+      db.execute(
+        `SELECT COUNT(*) as count FROM images
+         WHERE id NOT IN (SELECT DISTINCT image_id FROM image_tags WHERE category = 'art')`
+      ),
+      db.execute(
+        `SELECT value, COUNT(*) as count FROM image_tags WHERE category = 'art' GROUP BY value`
+      ),
+    ]);
 
-    const getCatCount = async (val) => {
-      const r = await db.execute({
-        sql: `SELECT COUNT(*) as count FROM image_tags WHERE category = 'art' AND value = ?`,
-        args: [val],
-      });
-      return Number(r.rows[0]?.count ?? r.rows[0]?.[0] ?? 0);
-    };
+    const inbox = Number(inboxRes.rows[0]?.count ?? inboxRes.rows[0]?.[0] ?? 0);
+    const artCounts = {};
+    artRes.rows.forEach((r) => {
+      const val = (r.value ?? r[0] ?? '').toLowerCase();
+      artCounts[val] = Number(r.count ?? r[1] ?? 0);
+    });
 
     res.json({
       inbox,
-      paare: await getCatCount('Paare'),
-      familie: await getCatCount('Familie'),
-      business: await getCatCount('Business'),
+      paare: artCounts.paare || 0,
+      familie: artCounts.familie || 0,
+      business: artCounts.business || 0,
     });
   } catch (e) {
     console.error(e);
@@ -224,15 +228,15 @@ router.patch('/images/:id', async (req, res) => {
     }
     if (tags !== undefined) {
       await db.execute({ sql: 'DELETE FROM image_tags WHERE image_id = ?', args: [id] });
-      for (const [category, values] of Object.entries(tags)) {
-        if (Array.isArray(values)) {
-          for (const v of values) {
-            await db.execute({
-              sql: 'INSERT INTO image_tags (image_id, category, value) VALUES (?, ?, ?)',
-              args: [id, category, v],
-            });
-          }
-        }
+      const rows = Object.entries(tags).flatMap(([category, values]) =>
+        Array.isArray(values) ? values.map((v) => [id, category, v]) : []
+      );
+      if (rows.length) {
+        const placeholders = rows.map(() => '(?, ?, ?)').join(', ');
+        await db.execute({
+          sql: `INSERT INTO image_tags (image_id, category, value) VALUES ${placeholders}`,
+          args: rows.flat(),
+        });
       }
     }
 
