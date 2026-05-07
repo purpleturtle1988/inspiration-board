@@ -19,7 +19,6 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
   latestTags.current = tags;
   latestNotes.current = notes;
 
-  // Reset when switching to a different image
   useEffect(() => {
     initialized.current = false;
     setTags(image.tags || {});
@@ -41,7 +40,6 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
     }
   }, [image.id, onUpdate]);
 
-  // Auto-save tags immediately on change (skip initial load)
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true;
@@ -50,7 +48,6 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
     save(latestTags.current, latestNotes.current);
   }, [tags, save]);
 
-  // Auto-save notes with debounce
   useEffect(() => {
     if (!initialized.current) return;
     clearTimeout(notesTimer.current);
@@ -86,53 +83,44 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
   };
 
   return (
-    <aside className="w-64 bg-[#111111] border-l border-white/10 flex flex-col flex-shrink-0 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
-        <h2 className="text-sm font-semibold text-white">Eigenschaften</h2>
-        <div className="flex items-center gap-2">
+    <aside className="w-68 bg-[#141414] border-l border-white/[0.06] flex flex-col flex-shrink-0 overflow-hidden" style={{width: '17rem'}}>
+      <div className="flex items-center justify-between px-5 py-5 border-b border-white/[0.06] flex-shrink-0">
+        <h2 className="text-sm font-bold tracking-wide text-white/60 uppercase">Eigenschaften</h2>
+        <div className="flex items-center gap-3">
           {saved && (
-            <span className="text-xs text-green-400 animate-pulse">✓ Gespeichert</span>
+            <span className="text-xs text-emerald-400 font-medium">✓ Gespeichert</span>
           )}
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors p-1 rounded"
-          >
+          <button onClick={onClose} className="text-white/25 hover:text-white/70 transition-colors w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/5">
             ✕
           </button>
         </div>
       </div>
 
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
-        {/* Image preview */}
-        <div className="p-4 border-b border-white/5">
+        <div className="p-4 border-b border-white/[0.04]">
           <img
             src={`/uploads/${image.filename}`}
             alt=""
-            className="w-full rounded-lg object-cover max-h-44"
+            className="w-full rounded-xl object-cover max-h-48"
           />
           {image.source_url && (
             <a
               href={image.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] text-amber-500/70 hover:text-amber-400 mt-2 block truncate transition-colors"
+              className="text-xs text-amber-500/60 hover:text-amber-400 mt-2.5 block truncate transition-colors"
             >
               ↗ Originalquelle öffnen
             </a>
           )}
         </div>
 
-        {/* Tag categories */}
-        <div className="px-4 py-4 space-y-5">
+        <div className="px-4 py-5 space-y-6">
           {TAG_CATEGORIES.map((cat) => (
             <div key={cat.id}>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
+              <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider mb-2.5">
                 {cat.label}
-                {cat.single && (
-                  <span className="ml-1 text-gray-700 normal-case font-normal">(1 wählbar)</span>
-                )}
+                {cat.single && <span className="ml-1.5 normal-case font-normal opacity-60">(1 wählbar)</span>}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {cat.options.map((opt) => {
@@ -141,10 +129,10 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
                     <button
                       key={opt}
                       onClick={() => toggleTag(cat.id, opt, cat.single)}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      className={`text-sm px-3 py-1.5 rounded-xl border transition-all ${
                         selected
                           ? 'bg-amber-500 border-amber-500 text-black font-semibold'
-                          : 'border-white/15 text-gray-400 hover:border-white/35 hover:text-white'
+                          : 'border-white/10 text-white/40 hover:border-white/25 hover:text-white/80'
                       }`}
                     >
                       {opt}
@@ -155,33 +143,27 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
             </div>
           ))}
 
-          {/* Notes */}
           <div>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
-              Notizen
-            </p>
+            <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider mb-2.5">Notizen</p>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notizen hinzufügen..."
+              placeholder="Notizen hinzufügen…"
               rows={3}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 placeholder-gray-600 resize-none focus:outline-none focus:border-amber-500/40 transition-colors"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-3 text-sm text-white/70 placeholder-white/20 resize-none focus:outline-none focus:border-amber-500/30 focus:bg-white/[0.06] transition-all"
             />
           </div>
         </div>
       </div>
 
-      {/* Delete button only */}
-      <div className="px-4 py-3 border-t border-white/10 flex-shrink-0">
+      <div className="px-4 py-4 border-t border-white/[0.06] flex-shrink-0">
         <button
           onClick={handleDelete}
-          className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-white/25 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-            <path d="M10 11v6M14 11v6" />
-            <path d="M9 6V4h6v2" />
+            <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+            <path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
           </svg>
           Bild löschen
         </button>

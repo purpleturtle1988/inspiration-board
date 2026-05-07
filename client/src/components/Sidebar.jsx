@@ -7,15 +7,15 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ view, onViewChange, counts }) {
   return (
-    <aside className="w-52 bg-[#111111] border-r border-white/10 flex flex-col flex-shrink-0">
-      <div className="px-4 py-5 border-b border-white/10">
-        <p className="text-[10px] font-bold tracking-widest uppercase text-gray-500">
+    <aside className="w-56 bg-[#141414] border-r border-white/[0.06] flex flex-col flex-shrink-0">
+      <div className="px-5 py-6 border-b border-white/[0.06]">
+        <p className="text-[11px] font-bold tracking-[0.15em] uppercase text-white/30">
           Inspiration
         </p>
-        <p className="text-xs text-gray-400 mt-0.5">Fotografie</p>
+        <p className="text-base font-semibold text-white mt-0.5">Fotografie</p>
       </div>
 
-      <nav className="flex-1 py-2">
+      <nav className="flex-1 py-3 px-2">
         {NAV_ITEMS.map((item) => {
           const isActive = view === item.id;
           const count = counts[item.id] ?? 0;
@@ -23,22 +23,22 @@ export default function Sidebar({ view, onViewChange, counts }) {
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium transition-all mb-0.5 ${
                 isActive
                   ? 'bg-amber-500/15 text-amber-400'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'
               }`}
             >
-              <span className="flex items-center gap-2.5">
-                <span className="text-base leading-none">{item.emoji}</span>
-                <span className="font-medium">{item.label}</span>
+              <span className="flex items-center gap-3">
+                <span className="text-lg leading-none">{item.emoji}</span>
+                <span>{item.label}</span>
               </span>
               {count > 0 && (
                 <span
-                  className={`text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center ${
+                  className={`text-xs rounded-full px-2 py-0.5 font-semibold ${
                     isActive
-                      ? 'bg-amber-500/25 text-amber-300'
-                      : 'bg-white/10 text-gray-500'
+                      ? 'bg-amber-500/20 text-amber-400'
+                      : 'bg-white/[0.06] text-white/30'
                   }`}
                 >
                   {count}
@@ -49,9 +49,9 @@ export default function Sidebar({ view, onViewChange, counts }) {
         })}
       </nav>
 
-      <div className="px-4 py-4 border-t border-white/10">
-        <p className="text-[10px] text-gray-600 leading-relaxed">
-          Bilder via URL oder Upload hinzufügen. Als PWA installieren für Mobile-Sharing.
+      <div className="px-5 py-5 border-t border-white/[0.06]">
+        <p className="text-[11px] text-white/20 leading-relaxed">
+          Bilder per URL, Upload oder Drag & Drop hinzufügen.
         </p>
       </div>
     </aside>

@@ -4,7 +4,7 @@ const FILTERS = [
   { id: 'location', label: 'Location', options: ['Indoor', 'Outdoor', 'Stadt'] },
 ];
 
-export default function FilterBar({ filters, onChange, total, filtered }) {
+export default function FilterBar({ filters, onChange }) {
   const toggle = (category, value) => {
     const current = filters[category] || [];
     onChange({
@@ -18,49 +18,49 @@ export default function FilterBar({ filters, onChange, total, filtered }) {
   const hasAny = Object.values(filters).some((v) => v.length > 0);
 
   return (
-    <div className="px-5 py-2 border-b border-white/5 flex items-center gap-5 overflow-x-auto flex-shrink-0">
-      {FILTERS.map((cat) => (
-        <div key={cat.id} className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
-            {cat.label}
-          </span>
-          <div className="flex gap-1">
-            {cat.options.map((opt) => {
-              const active = (filters[cat.id] || []).includes(opt);
-              return (
-                <button
-                  key={opt}
-                  onClick={() => toggle(cat.id, opt)}
-                  className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
-                    active
-                      ? 'bg-amber-500 text-black font-semibold'
-                      : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  {opt}
-                </button>
-              );
-            })}
+    <aside className="w-44 bg-[#141414] border-r border-white/[0.06] flex flex-col flex-shrink-0">
+      <div className="px-5 py-6 border-b border-white/[0.06]">
+        <p className="text-[11px] font-bold tracking-[0.15em] uppercase text-white/30">Filter</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto py-4 space-y-6 px-3">
+        {FILTERS.map((cat) => (
+          <div key={cat.id}>
+            <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider mb-2 px-2">
+              {cat.label}
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {cat.options.map((opt) => {
+                const active = (filters[cat.id] || []).includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => toggle(cat.id, opt)}
+                    className={`text-sm px-3 py-2 rounded-lg text-left transition-all ${
+                      active
+                        ? 'bg-amber-500/15 text-amber-400 font-medium'
+                        : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {hasAny && (
-        <>
-          <div className="w-px h-4 bg-white/10 flex-shrink-0" />
+        <div className="px-3 py-4 border-t border-white/[0.06]">
           <button
             onClick={() => onChange({ typ: [], pose: [], location: [] })}
-            className="text-xs text-gray-500 hover:text-white flex-shrink-0 transition-colors"
+            className="text-xs text-white/25 hover:text-white/60 w-full text-left transition-colors px-2"
           >
-            ✕ Alle Filter löschen
+            ✕ Filter löschen
           </button>
-          {total !== filtered && (
-            <span className="text-xs text-gray-600 flex-shrink-0">
-              {filtered} von {total}
-            </span>
-          )}
-        </>
+        </div>
       )}
-    </div>
+    </aside>
   );
 }
