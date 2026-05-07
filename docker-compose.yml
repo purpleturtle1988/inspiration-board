@@ -7,10 +7,14 @@ services:
     ports:
       - "9467:3000"
     volumes:
-      - ./data:/data
-      - ./uploads:/uploads
+      - inspiration-data:/data
+      - inspiration-uploads:/uploads
     environment:
       - NODE_ENV=production
       - DB_PATH=/data/inspiration.db
       - UPLOADS_PATH=/uploads
     restart: unless-stopped
+
+volumes:
+  inspiration-data:
+  inspiration-uploads:
