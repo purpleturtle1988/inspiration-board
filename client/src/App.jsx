@@ -151,10 +151,12 @@ export default function App() {
   }, [belongsInView]);
 
   const handleImageUpdated = (updatedImage) => {
-    // Always keep the image visible and panel open while tagging
     setImages((prev) => prev.map((img) => (img.id === updatedImage.id ? updatedImage : img)));
     setSelectedImage(updatedImage);
-    fetchCounts();
+    // Only refetch counts when Art tags change (those affect sidebar badges)
+    const prevArt = JSON.stringify(images.find(i => i.id === updatedImage.id)?.tags?.art || []);
+    const nextArt = JSON.stringify(updatedImage.tags?.art || []);
+    if (prevArt !== nextArt) fetchCounts();
   };
 
   const handleImageDeleted = (id) => {

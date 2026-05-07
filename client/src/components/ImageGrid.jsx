@@ -1,6 +1,9 @@
+import { memo, useCallback } from 'react';
 import ImageCard from './ImageCard';
 
-export default function ImageGrid({ images, loading, selectedId, onSelect }) {
+const ImageGrid = memo(function ImageGrid({ images, loading, selectedId, onSelect }) {
+  const handleSelect = useCallback((image) => () => onSelect(image), [onSelect]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -28,10 +31,12 @@ export default function ImageGrid({ images, loading, selectedId, onSelect }) {
           <ImageCard
             image={image}
             selected={selectedId === image.id}
-            onSelect={() => onSelect(image)}
+            onSelect={handleSelect(image)}
           />
         </div>
       ))}
     </div>
   );
-}
+});
+
+export default ImageGrid;
