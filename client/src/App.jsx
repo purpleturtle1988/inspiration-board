@@ -176,23 +176,21 @@ export default function App() {
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
       <Sidebar view={view} onViewChange={(v) => { setView(v); setSelectedImage(null); setFilters({ typ: [], pose: [], location: [] }); }} counts={counts} />
 
+      <FilterBar
+        filters={filters}
+        onChange={(f) => { setFilters(f); setSelectedImage(null); }}
+      />
+
       <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-        <header className="px-6 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
-          <h1 className="text-base font-semibold text-white">{viewLabel}</h1>
+        <header className="px-7 py-5 border-b border-white/[0.06] flex items-center justify-between flex-shrink-0">
+          <h1 className="text-xl font-bold text-white">{viewLabel}</h1>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+            className="bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all hover:scale-[1.02] active:scale-100"
           >
             + Bild hinzufügen
           </button>
         </header>
-
-        <FilterBar
-          filters={filters}
-          onChange={(f) => { setFilters(f); setSelectedImage(null); }}
-          total={images.length}
-          filtered={filteredImages.length}
-        />
 
         <div className="flex-1 overflow-hidden flex min-h-0">
           <div className="flex-1 overflow-y-auto p-5">
