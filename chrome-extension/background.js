@@ -14,37 +14,46 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   const { serverUrl } = await chrome.storage.sync.get({ serverUrl: '' });
 
   if (!serverUrl) {
-    chrome.action.openPopup();
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icon.png',
+      title: 'Inspiration Board',
+      message: 'Bitte zuerst die Server-URL im Plugin-Popup einstellen.',
+    });
     return;
   }
 
-  const url = info.srcUrl;
   const apiUrl = serverUrl.replace(/\/$/, '') + '/api/images/url';
 
   try {
     const res = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url: info.srcUrl }),
     });
 
     if (res.ok) {
-      showNotification('✓ Bild zur Inbox hinzugefügt!', url);
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon.png',
+        title: 'Inspiration Board',
+        message: '✓ Bild zur Inbox hinzugefügt!',
+      });
     } else {
       const data = await res.json().catch(() => ({}));
-      showNotification('Fehler: ' + (data.error || res.statusText), url);
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon.png',
+        title: 'Inspiration Board – Fehler',
+        message: data.error || 'Unbekannter Fehler (' + res.status + ')',
+      });
     }
   } catch (e) {
-    showNotification('Verbindungsfehler – ist die App erreichbar?', serverUrl);
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icon.png',
+      title: 'Inspiration Board – Verbindungsfehler',
+      message: 'App nicht erreichbar: ' + serverUrl,
+    });
   }
 });
-
-function showNotification(message, detail) {
-  chrome.notifications.create({
-    type: 'basic',
-    iconUrl: 'icon.png',
-    title: 'Inspiration Board',
-    message,
-    contextMessage: detail?.slice(0, 80),
-  });
-}
