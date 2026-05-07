@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    image: ghcr.io/purpleturtle1988/inspiration-board:latest
     container_name: inspiration-board
     ports:
       - "9467:3000"
