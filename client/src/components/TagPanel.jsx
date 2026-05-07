@@ -1,42 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 
 const TAG_CATEGORIES = [
-  {
-    id: 'art',
-    label: 'Art',
-    single: true,
-    options: ['Paare', 'Familie', 'Business'],
-  },
-  {
-    id: 'typ',
-    label: 'Typ',
-    single: false,
-    options: ['Sportlich', 'Verschmust', 'Energiegeladen', 'Fröhlich'],
-  },
-  {
-    id: 'pose',
-    label: 'Posen',
-    single: false,
-    options: ['Stehend', 'Laufend', 'Sitzend'],
-  },
-  {
-    id: 'location',
-    label: 'Location',
-    single: false,
-    options: ['Indoor', 'Outdoor', 'Stadt'],
-  },
+  { id: 'art', label: 'Art', single: true, options: ['Paare', 'Familie', 'Business'] },
+  { id: 'typ', label: 'Typ', single: false, options: ['Sportlich', 'Verschmust', 'Energiegeladen', 'Fröhlich'] },
+  { id: 'pose', label: 'Posen', single: false, options: ['Stehend', 'Laufend', 'Sitzend'] },
+  { id: 'location', label: 'Location', single: false, options: ['Indoor', 'Outdoor', 'Stadt'] },
 ];
 
 export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
   const [tags, setTags] = useState(image.tags || {});
   const [notes, setNotes] = useState(image.notes || '');
-  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const initialized = useRef(false);
+  const notesTimer = useRef(null);
+  const latestTags = useRef(tags);
+  const latestNotes = useRef(notes);
+  latestTags.current = tags;
+  latestNotes.current = notes;
 
+  // Reset when switching to a different image
   useEffect(() => {
+    initialized.current = false;
     setTags(image.tags || {});
     setNotes(image.notes || '');
+    setSaved(false);
   }, [image.id]);
+
+  const save = useCallback(async (currentTags, currentNotes) => {
+    try {
+      const res = await axios.patch(`/api/images/${image.id}`, {
+        tags: currentTags,
+        notes: currentNotes,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+      onUpdate(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [image.id, onUpdate]);
+
+  // Auto-save tags immediately on change (skip initial load)
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
+      return;
+    }
+    save(latestTags.current, latestNotes.current);
+  }, [tags, save]);
+
+  // Auto-save notes with debounce
+  useEffect(() => {
+    if (!initialized.current) return;
+    clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => {
+      save(latestTags.current, latestNotes.current);
+    }, 800);
+    return () => clearTimeout(notesTimer.current);
+  }, [notes, save]);
 
   const toggleTag = (categoryId, value, single) => {
     setTags((prev) => {
@@ -51,18 +73,6 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
           : [...current, value],
       };
     });
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const res = await axios.patch(`/api/images/${image.id}`, { tags, notes });
-      onUpdate(res.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleDelete = async () => {
@@ -80,13 +90,17 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
         <h2 className="text-sm font-semibold text-white">Eigenschaften</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-500 hover:text-white transition-colors p-1 rounded"
-          title="Schliessen"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-2">
+          {saved && (
+            <span className="text-xs text-green-400 animate-pulse">✓ Gespeichert</span>
+          )}
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-white transition-colors p-1 rounded"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Scrollable content */}
@@ -117,9 +131,7 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
                 {cat.label}
                 {cat.single && (
-                  <span className="ml-1 text-gray-700 normal-case font-normal">
-                    (1 wählbar)
-                  </span>
+                  <span className="ml-1 text-gray-700 normal-case font-normal">(1 wählbar)</span>
                 )}
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -159,35 +171,19 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="px-4 py-3 border-t border-white/10 flex gap-2 flex-shrink-0">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex-1 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 disabled:opacity-50 text-black font-semibold py-2 rounded-lg text-sm transition-colors"
-        >
-          {saving ? 'Speichert…' : 'Speichern'}
-        </button>
+      {/* Delete button only */}
+      <div className="px-4 py-3 border-t border-white/10 flex-shrink-0">
         <button
           onClick={handleDelete}
-          className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-          title="Bild löschen"
+          className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6" />
             <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
             <path d="M10 11v6M14 11v6" />
             <path d="M9 6V4h6v2" />
           </svg>
+          Bild löschen
         </button>
       </div>
     </aside>

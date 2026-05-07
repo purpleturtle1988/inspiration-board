@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import ImageGrid from './components/ImageGrid';
 import TagPanel from './components/TagPanel';
 import AddImageModal from './components/AddImageModal';
+import FilterBar from './components/FilterBar';
 
 export default function App() {
   const [view, setView] = useState('inbox');
@@ -14,6 +15,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [filters, setFilters] = useState({ typ: [], pose: [], location: [] });
   const dragCounter = useRef(0);
 
   const fetchImages = useCallback(async () => {
@@ -162,9 +164,17 @@ export default function App() {
   const viewLabel =
     view === 'inbox' ? 'Inbox' : view.charAt(0).toUpperCase() + view.slice(1);
 
+  const filteredImages = images.filter((img) => {
+    const { typ, pose, location } = filters;
+    if (typ.length && !typ.some((t) => img.tags?.typ?.includes(t))) return false;
+    if (pose.length && !pose.some((p) => img.tags?.pose?.includes(p))) return false;
+    if (location.length && !location.some((l) => img.tags?.location?.includes(l))) return false;
+    return true;
+  });
+
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
-      <Sidebar view={view} onViewChange={(v) => { setView(v); setSelectedImage(null); }} counts={counts} />
+      <Sidebar view={view} onViewChange={(v) => { setView(v); setSelectedImage(null); setFilters({ typ: [], pose: [], location: [] }); }} counts={counts} />
 
       <main className="flex-1 overflow-hidden flex flex-col min-w-0">
         <header className="px-6 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
@@ -177,10 +187,17 @@ export default function App() {
           </button>
         </header>
 
+        <FilterBar
+          filters={filters}
+          onChange={(f) => { setFilters(f); setSelectedImage(null); }}
+          total={images.length}
+          filtered={filteredImages.length}
+        />
+
         <div className="flex-1 overflow-hidden flex min-h-0">
           <div className="flex-1 overflow-y-auto p-5">
             <ImageGrid
-              images={images}
+              images={filteredImages}
               loading={loading}
               selectedId={selectedImage?.id}
               onSelect={setSelectedImage}
