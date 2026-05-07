@@ -13,7 +13,7 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
   const [notes, setNotes] = useState(image.notes || '');
   const [saved, setSaved] = useState(false);
   const initialized = useRef(false);
-  const notesTimer = useRef(null);
+  const saveTimer = useRef(null);
   const latestTags = useRef(tags);
   const latestNotes = useRef(notes);
   latestTags.current = tags;
@@ -40,21 +40,29 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
     }
   }, [image.id, onUpdate]);
 
+  // Debounce all saves (tags + notes) to 300ms to avoid rapid API calls
+  const scheduleSave = useCallback(() => {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      save(latestTags.current, latestNotes.current);
+    }, 300);
+  }, [save]);
+
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true;
       return;
     }
-    save(latestTags.current, latestNotes.current);
-  }, [tags, save]);
+    scheduleSave();
+  }, [tags, scheduleSave]);
 
   useEffect(() => {
     if (!initialized.current) return;
-    clearTimeout(notesTimer.current);
-    notesTimer.current = setTimeout(() => {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
       save(latestTags.current, latestNotes.current);
     }, 800);
-    return () => clearTimeout(notesTimer.current);
+    return () => clearTimeout(saveTimer.current);
   }, [notes, save]);
 
   const toggleTag = (categoryId, value, single) => {

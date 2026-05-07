@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 const TAG_STYLE = {
   art: 'bg-blue-500/25 text-blue-300',
   typ: 'bg-purple-500/25 text-purple-300',
@@ -5,7 +7,7 @@ const TAG_STYLE = {
   location: 'bg-orange-500/25 text-orange-300',
 };
 
-export default function ImageCard({ image, selected, onSelect }) {
+const ImageCard = memo(function ImageCard({ image, selected, onSelect }) {
   const allTags = Object.entries(image.tags || {}).flatMap(([cat, vals]) =>
     vals.map((v) => ({ cat, value: v }))
   );
@@ -57,4 +59,6 @@ export default function ImageCard({ image, selected, onSelect }) {
       </div>
     </div>
   );
-}
+});
+
+export default ImageCard;
