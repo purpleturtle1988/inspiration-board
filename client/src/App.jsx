@@ -134,24 +134,26 @@ export default function App() {
     fetchCounts();
   };
 
+  // Check whether an image belongs in the current view
+  const belongsInView = useCallback((img) => {
+    const artTags = img.tags?.art || [];
+    if (view === 'inbox') return artTags.length === 0;
+    const viewCat = view.charAt(0).toUpperCase() + view.slice(1);
+    return artTags.includes(viewCat);
+  }, [view]);
+
+  // Called when TagPanel closes — remove image from list if it no longer belongs
+  const handleTagPanelClose = useCallback((closedImage) => {
+    if (closedImage && !belongsInView(closedImage)) {
+      setImages((prev) => prev.filter((img) => img.id !== closedImage.id));
+    }
+    setSelectedImage(null);
+  }, [belongsInView]);
+
   const handleImageUpdated = (updatedImage) => {
-    const artTags = updatedImage.tags?.art || [];
-    let removeFromView = false;
-
-    if (view === 'inbox' && artTags.length > 0) {
-      removeFromView = true;
-    } else if (view !== 'inbox') {
-      const viewCat = view.charAt(0).toUpperCase() + view.slice(1);
-      if (!artTags.includes(viewCat)) removeFromView = true;
-    }
-
-    if (removeFromView) {
-      setImages((prev) => prev.filter((img) => img.id !== updatedImage.id));
-      setSelectedImage(null);
-    } else {
-      setImages((prev) => prev.map((img) => (img.id === updatedImage.id ? updatedImage : img)));
-      setSelectedImage(updatedImage);
-    }
+    // Always keep the image visible and panel open while tagging
+    setImages((prev) => prev.map((img) => (img.id === updatedImage.id ? updatedImage : img)));
+    setSelectedImage(updatedImage);
     fetchCounts();
   };
 
@@ -160,6 +162,16 @@ export default function App() {
     setSelectedImage(null);
     fetchCounts();
   };
+
+  // When selecting a different image, flush the pending removal of the previous one
+  const handleSelectImage = useCallback((img) => {
+    setSelectedImage((prev) => {
+      if (prev && prev.id !== img?.id && !belongsInView(prev)) {
+        setImages((list) => list.filter((i) => i.id !== prev.id));
+      }
+      return img;
+    });
+  }, [belongsInView]);
 
   const viewLabel =
     view === 'inbox' ? 'Inbox' : view.charAt(0).toUpperCase() + view.slice(1);
@@ -174,7 +186,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
-      <Sidebar view={view} onViewChange={(v) => { setView(v); setSelectedImage(null); setFilters({ typ: [], pose: [], location: [] }); }} counts={counts} />
+      <Sidebar view={view} onViewChange={(v) => { handleTagPanelClose(selectedImage); setView(v); setFilters({ typ: [], pose: [], location: [] }); }} counts={counts} />
 
       <FilterBar
         filters={filters}
@@ -198,7 +210,7 @@ export default function App() {
               images={filteredImages}
               loading={loading}
               selectedId={selectedImage?.id}
-              onSelect={setSelectedImage}
+              onSelect={handleSelectImage}
             />
           </div>
 
@@ -207,7 +219,7 @@ export default function App() {
               image={selectedImage}
               onUpdate={handleImageUpdated}
               onDelete={handleImageDeleted}
-              onClose={() => setSelectedImage(null)}
+              onClose={() => handleTagPanelClose(selectedImage)}
             />
           )}
         </div>
