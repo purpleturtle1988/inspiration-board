@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import Sidebar from './components/Sidebar';
 import ImageGrid from './components/ImageGrid';
@@ -12,6 +12,9 @@ export default function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const dragCounter = useRef(0);
 
   const fetchImages = useCallback(async () => {
     setLoading(true);
@@ -37,6 +40,58 @@ export default function App() {
   useEffect(() => {
     fetchImages();
     fetchCounts();
+  }, [fetchImages, fetchCounts]);
+
+  // Global drag & drop from Finder/Desktop
+  useEffect(() => {
+    const onDragEnter = (e) => {
+      e.preventDefault();
+      if ([...e.dataTransfer.items].some((i) => i.kind === 'file' && i.type.startsWith('image/'))) {
+        dragCounter.current += 1;
+        setDragOver(true);
+      }
+    };
+    const onDragLeave = (e) => {
+      e.preventDefault();
+      dragCounter.current -= 1;
+      if (dragCounter.current === 0) setDragOver(false);
+    };
+    const onDragOver = (e) => e.preventDefault();
+    const onDrop = async (e) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setDragOver(false);
+      const files = [...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'));
+      if (!files.length) return;
+      setUploading(true);
+      try {
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append('file', file);
+          await axios.post('/api/images/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }
+        setView('inbox');
+        await fetchImages();
+        await fetchCounts();
+      } catch (e) {
+        console.error('Drop upload failed:', e);
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('drop', onDrop);
+    return () => {
+      window.removeEventListener('dragenter', onDragEnter);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('drop', onDrop);
+    };
   }, [fetchImages, fetchCounts]);
 
   // Listen for PWA share target messages from service worker
@@ -142,6 +197,27 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* Global drag & drop overlay */}
+      {(dragOver || uploading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-[#1a1a1a] border-2 border-dashed border-amber-500 rounded-2xl px-16 py-12 text-center shadow-2xl">
+            {uploading ? (
+              <>
+                <div className="w-10 h-10 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-white font-semibold text-lg">Lädt hoch…</p>
+              </>
+            ) : (
+              <>
+                <div className="text-5xl mb-4">📷</div>
+                <p className="text-white font-semibold text-lg">Bilder loslassen</p>
+                <p className="text-gray-400 text-sm mt-1">Landen direkt in der Inbox</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {showAddModal && (
         <AddImageModal
