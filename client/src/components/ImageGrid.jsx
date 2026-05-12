@@ -1,9 +1,18 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useRef } from 'react';
 import ImageCard from './ImageCard';
 
-const ImageGrid = memo(function ImageGrid({ images, loading, selectedId, onSelect, onOpenLightbox }) {
-  const handleSelect = useCallback((image) => () => onSelect(image), [onSelect]);
+const ImageGrid = memo(function ImageGrid({ images, loading, selectedIds, onSelect, onOpenLightbox }) {
+  const lastIndexRef = useRef(null);
+
+  const handleClick = useCallback((image, index, e) => {
+    onSelect(image, index, e, lastIndexRef.current, images);
+    // Update lastIndex only for non-shift clicks (shift extends from last anchor)
+    if (!e.shiftKey) lastIndexRef.current = index;
+  }, [onSelect, images]);
+
   const handleLightbox = useCallback((image) => () => onOpenLightbox(image), [onOpenLightbox]);
+
+  const multiMode = selectedIds.size > 0;
 
   if (loading) {
     return (
@@ -18,21 +27,20 @@ const ImageGrid = memo(function ImageGrid({ images, loading, selectedId, onSelec
       <div className="flex flex-col items-center justify-center h-48 text-center select-none">
         <div className="text-5xl mb-3 opacity-30">📷</div>
         <p className="text-gray-500 text-sm">Keine Bilder vorhanden</p>
-        <p className="text-gray-600 text-xs mt-1">
-          Klicke auf "Bild hinzufügen" um zu starten
-        </p>
+        <p className="text-gray-600 text-xs mt-1">Klicke auf "Bild hinzufügen" um zu starten</p>
       </div>
     );
   }
 
   return (
     <div className="columns-2 sm:columns-3 lg:columns-4 xl:columns-5 2xl:columns-6 gap-3">
-      {images.map((image) => (
+      {images.map((image, index) => (
         <div key={image.id} className="break-inside-avoid mb-3">
           <ImageCard
             image={image}
-            selected={selectedId === image.id}
-            onSelect={handleSelect(image)}
+            selected={selectedIds.has(image.id)}
+            multiMode={multiMode}
+            onSelect={(e) => handleClick(image, index, e)}
             onOpenLightbox={handleLightbox(image)}
           />
         </div>

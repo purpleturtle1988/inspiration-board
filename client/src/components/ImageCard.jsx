@@ -1,14 +1,16 @@
 import { memo } from 'react';
 import { ZoomIn } from 'lucide-react';
 
+const TAG_COLORS = ['bg-blue-500/25 text-blue-300', 'bg-purple-500/25 text-purple-300', 'bg-emerald-500/25 text-emerald-300', 'bg-orange-500/25 text-orange-300', 'bg-pink-500/25 text-pink-300'];
+
 const TAG_STYLE = {
-  art: 'bg-blue-500/25 text-blue-300',
-  typ: 'bg-purple-500/25 text-purple-300',
-  pose: 'bg-emerald-500/25 text-emerald-300',
+  art:      'bg-blue-500/25 text-blue-300',
+  typ:      'bg-purple-500/25 text-purple-300',
+  pose:     'bg-emerald-500/25 text-emerald-300',
   location: 'bg-orange-500/25 text-orange-300',
 };
 
-const ImageCard = memo(function ImageCard({ image, selected, onSelect, onOpenLightbox }) {
+const ImageCard = memo(function ImageCard({ image, selected, multiMode, onSelect, onOpenLightbox }) {
   const allTags = Object.entries(image.tags || {}).flatMap(([cat, vals]) =>
     vals.map((v) => ({ cat, value: v }))
   );
@@ -39,15 +41,28 @@ const ImageCard = memo(function ImageCard({ image, selected, onSelect, onOpenLig
           allTags.length > 0 || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}
       >
-        {/* Zoom icon top-right on hover */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div
-            onClick={(e) => { e.stopPropagation(); onOpenLightbox?.(); }}
-            className="bg-black/40 backdrop-blur-sm p-1.5 rounded-full text-white/70 hover:text-white hover:bg-black/60 transition-colors cursor-pointer"
-          >
-            <ZoomIn className="w-4 h-4" />
+        {/* Multi-select checkbox top-left */}
+        {(multiMode || selected) && (
+          <div className="absolute top-2 left-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+              selected ? 'bg-amber-500 border-amber-500' : 'border-white/40 bg-black/30'
+            }`}>
+              {selected && <span className="text-black text-[10px] font-bold leading-none">✓</span>}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Zoom icon top-right on hover (hide in multi-mode) */}
+        {!multiMode && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div
+              onClick={(e) => { e.stopPropagation(); onOpenLightbox?.(); }}
+              className="bg-black/40 backdrop-blur-sm p-1.5 rounded-full text-white/70 hover:text-white hover:bg-black/60 transition-colors cursor-pointer"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </div>
+          </div>
+        )}
 
         {/* Tags bottom */}
         {allTags.length > 0 && (
@@ -62,9 +77,7 @@ const ImageCard = memo(function ImageCard({ image, selected, onSelect, onOpenLig
                 </span>
               ))}
               {allTags.length > 3 && (
-                <span className="text-[11px] text-white/50 px-1 py-0.5">
-                  +{allTags.length - 3}
-                </span>
+                <span className="text-[11px] text-white/50 px-1 py-0.5">+{allTags.length - 3}</span>
               )}
             </div>
           </div>
