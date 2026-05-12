@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { ZoomIn } from 'lucide-react';
 
 const TAG_STYLE = {
   art: 'bg-blue-500/25 text-blue-300',
@@ -7,7 +8,7 @@ const TAG_STYLE = {
   location: 'bg-orange-500/25 text-orange-300',
 };
 
-const ImageCard = memo(function ImageCard({ image, selected, onSelect }) {
+const ImageCard = memo(function ImageCard({ image, selected, onSelect, onOpenLightbox }) {
   const allTags = Object.entries(image.tags || {}).flatMap(([cat, vals]) =>
     vals.map((v) => ({ cat, value: v }))
   );
@@ -15,6 +16,7 @@ const ImageCard = memo(function ImageCard({ image, selected, onSelect }) {
   return (
     <div
       onClick={onSelect}
+      onDoubleClick={(e) => { e.stopPropagation(); onOpenLightbox?.(); }}
       className={`relative rounded-2xl overflow-hidden cursor-pointer group transition-all duration-200 ${
         selected
           ? 'ring-2 ring-amber-500 ring-offset-2 ring-offset-[#0d0d0d]'
@@ -37,6 +39,17 @@ const ImageCard = memo(function ImageCard({ image, selected, onSelect }) {
           allTags.length > 0 || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}
       >
+        {/* Zoom icon top-right on hover */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div
+            onClick={(e) => { e.stopPropagation(); onOpenLightbox?.(); }}
+            className="bg-black/40 backdrop-blur-sm p-1.5 rounded-full text-white/70 hover:text-white hover:bg-black/60 transition-colors cursor-pointer"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </div>
+        </div>
+
+        {/* Tags bottom */}
         {allTags.length > 0 && (
           <div className="absolute bottom-0 left-0 right-0 p-2.5">
             <div className="flex flex-wrap gap-1">

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { compressImage } from './utils/compressImage';
 import Sidebar from './components/Sidebar';
 import ImageGrid from './components/ImageGrid';
 import TagPanel from './components/TagPanel';
 import AddImageModal from './components/AddImageModal';
 import FilterBar from './components/FilterBar';
+import LightboxModal from './components/LightboxModal';
 
 export default function App() {
   const [view, setView] = useState('inbox');
@@ -16,6 +18,7 @@ export default function App() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [filters, setFilters] = useState({ typ: [], pose: [], location: [] });
+  const [lightboxImage, setLightboxImage] = useState(null);
   const dragCounter = useRef(0);
 
   const fetchImages = useCallback(async () => {
@@ -68,8 +71,9 @@ export default function App() {
       setUploading(true);
       try {
         for (const file of files) {
+          const compressed = await compressImage(file).catch(() => file);
           const formData = new FormData();
-          formData.append('file', file);
+          formData.append('file', compressed);
           await axios.post('/api/images/upload', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
@@ -213,6 +217,7 @@ export default function App() {
               loading={loading}
               selectedId={selectedImage?.id}
               onSelect={handleSelectImage}
+              onOpenLightbox={setLightboxImage}
             />
           </div>
 
@@ -252,6 +257,15 @@ export default function App() {
         <AddImageModal
           onClose={() => setShowAddModal(false)}
           onAdded={handleImageAdded}
+        />
+      )}
+
+      {lightboxImage && (
+        <LightboxModal
+          image={lightboxImage}
+          images={filteredImages}
+          onClose={() => setLightboxImage(null)}
+          onNavigate={setLightboxImage}
         />
       )}
     </div>
