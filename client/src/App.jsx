@@ -11,7 +11,8 @@ import LightboxModal from './components/LightboxModal';
 export default function App() {
   const [view, setView] = useState('inbox');
   const [images, setImages] = useState([]);
-  const [counts, setCounts] = useState({ inbox: 0, paare: 0, familie: 0, business: 0 });
+  const [counts, setCounts] = useState({ inbox: 0 });
+  const [categories, setCategories] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,10 +43,20 @@ export default function App() {
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/categories');
+      setCategories(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchImages();
     fetchCounts();
-  }, [fetchImages, fetchCounts]);
+    fetchCategories();
+  }, [fetchImages, fetchCounts, fetchCategories]);
 
   // Global drag & drop from Finder/Desktop
   useEffect(() => {
@@ -142,9 +153,11 @@ export default function App() {
   const belongsInView = useCallback((img) => {
     const artTags = img.tags?.art || [];
     if (view === 'inbox') return artTags.length === 0;
-    const viewCat = view.charAt(0).toUpperCase() + view.slice(1);
+    // Match against the exact stored category name (case-preserving)
+    const cat = categories.find((c) => c.name.toLowerCase() === view);
+    const viewCat = cat?.name ?? (view.charAt(0).toUpperCase() + view.slice(1));
     return artTags.includes(viewCat);
-  }, [view]);
+  }, [view, categories]);
 
   // Called when TagPanel closes — remove image from list if it no longer belongs
   const handleTagPanelClose = useCallback((closedImage) => {
@@ -179,8 +192,38 @@ export default function App() {
     });
   }, [belongsInView]);
 
-  const viewLabel =
-    view === 'inbox' ? 'Inbox' : view.charAt(0).toUpperCase() + view.slice(1);
+  const viewLabel = view === 'inbox'
+    ? 'Inbox'
+    : (categories.find((c) => c.name.toLowerCase() === view)?.name
+       ?? (view.charAt(0).toUpperCase() + view.slice(1)));
+
+  const handleAddCategory = async (name, emoji) => {
+    try {
+      const res = await axios.post('/api/categories', { name, emoji });
+      setCategories((prev) => [...prev, res.data]);
+      fetchCounts();
+    } catch (e) {
+      if (e.response?.status === 409) alert('Diese Kategorie existiert bereits.');
+      else console.error(e);
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    try {
+      await axios.delete(`/api/categories/${id}`);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      // If currently viewing the deleted category, go back to inbox
+      const deleted = categories.find((c) => c.id === id);
+      if (deleted && deleted.name.toLowerCase() === view) {
+        handleTagPanelClose(selectedImage);
+        setView('inbox');
+        setFilters({ typ: [], pose: [], location: [] });
+      }
+      fetchCounts();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const filteredImages = images.filter((img) => {
     const { typ, pose, location } = filters;
@@ -192,7 +235,14 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
-      <Sidebar view={view} onViewChange={(v) => { handleTagPanelClose(selectedImage); setView(v); setFilters({ typ: [], pose: [], location: [] }); }} counts={counts} />
+      <Sidebar
+        view={view}
+        onViewChange={(v) => { handleTagPanelClose(selectedImage); setView(v); setFilters({ typ: [], pose: [], location: [] }); }}
+        counts={counts}
+        categories={categories}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
+      />
 
       <FilterBar
         filters={filters}
@@ -224,6 +274,7 @@ export default function App() {
           {selectedImage && (
             <TagPanel
               image={selectedImage}
+              categories={categories}
               onUpdate={handleImageUpdated}
               onDelete={handleImageDeleted}
               onClose={() => handleTagPanelClose(selectedImage)}

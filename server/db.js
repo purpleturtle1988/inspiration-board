@@ -27,8 +27,24 @@ async function initDB() {
       value TEXT NOT NULL,
       PRIMARY KEY (image_id, category, value)
     );
+    CREATE TABLE IF NOT EXISTS categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      emoji TEXT NOT NULL DEFAULT '📁',
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
     PRAGMA foreign_keys = ON;
   `);
+  // Seed default categories if table is empty
+  const existing = await db.execute('SELECT COUNT(*) as count FROM categories');
+  const count = Number(existing.rows[0]?.count ?? existing.rows[0]?.[0] ?? 0);
+  if (count === 0) {
+    await db.executeMultiple(`
+      INSERT INTO categories (name, emoji, sort_order) VALUES ('Paare', '💑', 1);
+      INSERT INTO categories (name, emoji, sort_order) VALUES ('Familie', '👨‍👩‍👧', 2);
+      INSERT INTO categories (name, emoji, sort_order) VALUES ('Business', '💼', 3);
+    `);
+  }
 }
 
 module.exports = { db, initDB };
