@@ -10,7 +10,7 @@ const TAG_STYLE = {
   location: 'bg-orange-500/25 text-orange-300',
 };
 
-const ImageCard = memo(function ImageCard({ image, selected, multiMode, onSelect, onOpenLightbox }) {
+const ImageCard = memo(function ImageCard({ image, selected, multiMode, dragOver, onSelect, onOpenLightbox }) {
   const allTags = Object.entries(image.tags || {}).flatMap(([cat, vals]) =>
     vals.map((v) => ({ cat, value: v }))
   );
@@ -20,9 +20,9 @@ const ImageCard = memo(function ImageCard({ image, selected, multiMode, onSelect
       onClick={onSelect}
       onDoubleClick={(e) => { e.stopPropagation(); onOpenLightbox?.(); }}
       className={`relative rounded-2xl overflow-hidden cursor-pointer group transition-all duration-200 ${
-        selected
-          ? 'ring-2 ring-amber-500 ring-offset-2 ring-offset-[#0d0d0d]'
-          : 'ring-1 ring-white/[0.06] hover:ring-white/20 hover:scale-[1.01]'
+        dragOver   ? 'ring-2 ring-blue-400 scale-[0.97] opacity-70'
+        : selected ? 'ring-2 ring-amber-500 ring-offset-2 ring-offset-[#0d0d0d]'
+                   : 'ring-1 ring-white/[0.06] hover:ring-white/20 hover:scale-[1.01]'
       }`}
     >
       <img
