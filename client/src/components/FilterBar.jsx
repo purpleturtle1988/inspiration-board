@@ -45,12 +45,12 @@ export default function FilterBar({
     <aside className="w-44 bg-[#141414] border-r border-white/[0.06] flex flex-col flex-shrink-0">
       {/* Header */}
       <div className="px-4 py-6 border-b border-white/[0.06] flex items-center justify-between">
-        <p className="text-[11px] font-bold tracking-[0.15em] uppercase text-white/30">Filter</p>
+        <p className="text-[11px] font-bold tracking-[0.15em] uppercase text-white/70">Filter</p>
         <button
           onClick={() => { setEditMode((v) => !v); setAddingTo(null); setAddingCat(false); }}
           title={editMode ? 'Fertig' : 'Filter anpassen'}
           className={`w-6 h-6 flex items-center justify-center rounded-md text-sm transition-colors ${
-            editMode ? 'bg-amber-500/20 text-amber-400' : 'text-white/20 hover:text-white/50 hover:bg-white/[0.04]'
+            editMode ? 'bg-amber-500/20 text-amber-400' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
           }`}
         >
           {editMode ? '✓' : '✎'}

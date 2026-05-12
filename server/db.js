@@ -33,6 +33,19 @@ async function initDB() {
       emoji TEXT NOT NULL DEFAULT '📁',
       sort_order INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      parent_id INTEGER REFERENCES sessions(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS session_images (
+      session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+      image_id   INTEGER NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (session_id, image_id)
+    );
     CREATE TABLE IF NOT EXISTS filter_categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT NOT NULL UNIQUE,
