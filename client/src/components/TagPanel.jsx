@@ -1,13 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 
-const FIXED_CATEGORIES = [
-  { id: 'typ', label: 'Typ', single: false, options: ['Sportlich', 'Verschmust', 'Energiegeladen', 'Fröhlich'] },
-  { id: 'pose', label: 'Posen', single: false, options: ['Stehend', 'Laufend', 'Sitzend'] },
-  { id: 'location', label: 'Location', single: false, options: ['Indoor', 'Outdoor', 'Stadt'] },
-];
+const ART_OPTIONS = ['Paare', 'Familie', 'Business'];
 
-export default function TagPanel({ image, categories, onUpdate, onDelete, onClose }) {
+export default function TagPanel({ image, filterDefs, onUpdate, onDelete, onClose }) {
   const [tags, setTags] = useState(image.tags || {});
   const [notes, setNotes] = useState(image.notes || '');
   const initialized = useRef(false);
@@ -35,38 +31,27 @@ export default function TagPanel({ image, categories, onUpdate, onDelete, onClos
     }
   }, [image.id, onUpdate]);
 
-  // Debounce tag saves to 300ms
   const scheduleSave = useCallback(() => {
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      save(latestTags.current, latestNotes.current);
-    }, 300);
+    saveTimer.current = setTimeout(() => save(latestTags.current, latestNotes.current), 300);
   }, [save]);
 
   useEffect(() => {
-    if (!initialized.current) {
-      initialized.current = true;
-      return;
-    }
+    if (!initialized.current) { initialized.current = true; return; }
     scheduleSave();
   }, [tags, scheduleSave]);
 
-  // Debounce notes saves to 800ms
   useEffect(() => {
     if (!initialized.current) return;
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      save(latestTags.current, latestNotes.current);
-    }, 800);
+    saveTimer.current = setTimeout(() => save(latestTags.current, latestNotes.current), 800);
     return () => clearTimeout(saveTimer.current);
   }, [notes, save]);
 
   const toggleTag = (categoryId, value, single) => {
     setTags((prev) => {
       const current = prev[categoryId] || [];
-      if (single) {
-        return { ...prev, [categoryId]: current.includes(value) ? [] : [value] };
-      }
+      if (single) return { ...prev, [categoryId]: current.includes(value) ? [] : [value] };
       return {
         ...prev,
         [categoryId]: current.includes(value)
@@ -81,13 +66,8 @@ export default function TagPanel({ image, categories, onUpdate, onDelete, onClos
     try {
       await axios.delete(`/api/images/${image.id}`);
       onDelete(image.id);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   };
-
-  // Build Art options dynamically from the categories prop
-  const artOptions = (categories || []).map((c) => c.name);
 
   return (
     <aside className="w-68 bg-[#141414] border-l border-white/[0.06] flex flex-col flex-shrink-0 overflow-hidden" style={{width: '17rem'}}>
@@ -106,65 +86,51 @@ export default function TagPanel({ image, categories, onUpdate, onDelete, onClos
             className="w-full rounded-xl object-cover max-h-48"
           />
           {image.source_url && (
-            <a
-              href={image.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-amber-500/60 hover:text-amber-400 mt-2.5 block truncate transition-colors"
-            >
+            <a href={image.source_url} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-amber-500/60 hover:text-amber-400 mt-2.5 block truncate transition-colors">
               ↗ Originalquelle öffnen
             </a>
           )}
         </div>
 
         <div className="px-4 py-5 space-y-6">
-          {/* Art — dynamic from categories */}
-          {artOptions.length > 0 && (
-            <div>
-              <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider mb-2.5">
-                Art <span className="ml-1.5 normal-case font-normal opacity-60">(1 wählbar)</span>
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {artOptions.map((opt) => {
-                  const selected = (tags.art || []).includes(opt);
-                  return (
-                    <button
-                      key={opt}
-                      onClick={() => toggleTag('art', opt, true)}
-                      className={`text-sm px-3 py-1.5 rounded-xl border transition-all ${
-                        selected
-                          ? 'bg-amber-500 border-amber-500 text-black font-semibold'
-                          : 'border-white/10 text-white/40 hover:border-white/25 hover:text-white/80'
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
+          {/* Art — fixed */}
+          <div>
+            <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider mb-2.5">
+              Art <span className="ml-1.5 normal-case font-normal opacity-60">(1 wählbar)</span>
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {ART_OPTIONS.map((opt) => {
+                const selected = (tags.art || []).includes(opt);
+                return (
+                  <button key={opt} onClick={() => toggleTag('art', opt, true)}
+                    className={`text-sm px-3 py-1.5 rounded-xl border transition-all ${
+                      selected ? 'bg-amber-500 border-amber-500 text-black font-semibold'
+                               : 'border-white/10 text-white/40 hover:border-white/25 hover:text-white/80'
+                    }`}>
+                    {opt}
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
 
-          {/* Fixed categories: Typ, Posen, Location */}
-          {FIXED_CATEGORIES.map((cat) => (
-            <div key={cat.id}>
+          {/* Dynamic filter categories */}
+          {(filterDefs || []).map((cat) => (
+            <div key={cat.slug}>
               <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider mb-2.5">
                 {cat.label}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {cat.options.map((opt) => {
-                  const selected = (tags[cat.id] || []).includes(opt);
+                  const selected = (tags[cat.slug] || []).includes(opt.value);
                   return (
-                    <button
-                      key={opt}
-                      onClick={() => toggleTag(cat.id, opt, cat.single)}
+                    <button key={opt.id} onClick={() => toggleTag(cat.slug, opt.value, false)}
                       className={`text-sm px-3 py-1.5 rounded-xl border transition-all ${
-                        selected
-                          ? 'bg-amber-500 border-amber-500 text-black font-semibold'
-                          : 'border-white/10 text-white/40 hover:border-white/25 hover:text-white/80'
-                      }`}
-                    >
-                      {opt}
+                        selected ? 'bg-amber-500 border-amber-500 text-black font-semibold'
+                                 : 'border-white/10 text-white/40 hover:border-white/25 hover:text-white/80'
+                      }`}>
+                      {opt.value}
                     </button>
                   );
                 })}
@@ -186,10 +152,8 @@ export default function TagPanel({ image, categories, onUpdate, onDelete, onClos
       </div>
 
       <div className="px-4 py-4 border-t border-white/[0.06] flex-shrink-0">
-        <button
-          onClick={handleDelete}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-white/25 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
-        >
+        <button onClick={handleDelete}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-white/25 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
             <path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />

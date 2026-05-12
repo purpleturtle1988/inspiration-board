@@ -33,16 +33,40 @@ async function initDB() {
       emoji TEXT NOT NULL DEFAULT '📁',
       sort_order INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS filter_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT NOT NULL UNIQUE,
+      label TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS filter_options (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT NOT NULL,
+      value TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(slug, value)
+    );
     PRAGMA foreign_keys = ON;
   `);
-  // Seed default categories if table is empty
-  const existing = await db.execute('SELECT COUNT(*) as count FROM categories');
-  const count = Number(existing.rows[0]?.count ?? existing.rows[0]?.[0] ?? 0);
-  if (count === 0) {
+
+  // Seed filter categories + options if empty
+  const fcRes = await db.execute('SELECT COUNT(*) as count FROM filter_categories');
+  const fcCount = Number(fcRes.rows[0]?.count ?? fcRes.rows[0]?.[0] ?? 0);
+  if (fcCount === 0) {
     await db.executeMultiple(`
-      INSERT INTO categories (name, emoji, sort_order) VALUES ('Paare', '💑', 1);
-      INSERT INTO categories (name, emoji, sort_order) VALUES ('Familie', '👨‍👩‍👧', 2);
-      INSERT INTO categories (name, emoji, sort_order) VALUES ('Business', '💼', 3);
+      INSERT INTO filter_categories (slug, label, sort_order) VALUES ('typ', 'Typ', 1);
+      INSERT INTO filter_categories (slug, label, sort_order) VALUES ('pose', 'Posen', 2);
+      INSERT INTO filter_categories (slug, label, sort_order) VALUES ('location', 'Location', 3);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('typ', 'Sportlich', 1);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('typ', 'Verschmust', 2);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('typ', 'Energiegeladen', 3);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('typ', 'Fröhlich', 4);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('pose', 'Stehend', 1);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('pose', 'Laufend', 2);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('pose', 'Sitzend', 3);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('location', 'Indoor', 1);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('location', 'Outdoor', 2);
+      INSERT INTO filter_options (slug, value, sort_order) VALUES ('location', 'Stadt', 3);
     `);
   }
 }

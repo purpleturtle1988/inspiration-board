@@ -83,31 +83,49 @@ function toPlain(rows) {
   });
 }
 
-// GET /api/categories
-router.get('/categories', async (req, res) => {
+// ── Filter management ────────────────────────────────────────────────────────
+
+// GET /api/filters  →  [{slug, label, options: [{id, value}]}]
+router.get('/filters', async (req, res) => {
   try {
-    const result = await db.execute('SELECT * FROM categories ORDER BY sort_order ASC, id ASC');
-    res.json(result.rows);
+    const [cats, opts] = await Promise.all([
+      db.execute('SELECT * FROM filter_categories ORDER BY sort_order ASC, id ASC'),
+      db.execute('SELECT * FROM filter_options ORDER BY sort_order ASC, id ASC'),
+    ]);
+    const optMap = {};
+    opts.rows.forEach((r) => {
+      const slug = r.slug ?? r[1];
+      const id   = Number(r.id ?? r[0]);
+      const val  = r.value ?? r[2];
+      if (!optMap[slug]) optMap[slug] = [];
+      optMap[slug].push({ id, value: val });
+    });
+    const result = cats.rows.map((r) => ({
+      slug:  r.slug  ?? r[1],
+      label: r.label ?? r[2],
+      options: optMap[r.slug ?? r[1]] || [],
+    }));
+    res.json(result);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/categories
-router.post('/categories', async (req, res) => {
+// POST /api/filters/categories  →  {label}
+router.post('/filters/categories', async (req, res) => {
   try {
-    const { name, emoji = '📁' } = req.body;
-    if (!name || !name.trim()) return res.status(400).json({ error: 'Name erforderlich' });
-    const trimmed = name.trim();
-    const orderRes = await db.execute('SELECT MAX(sort_order) as max FROM categories');
+    const { label } = req.body;
+    if (!label?.trim()) return res.status(400).json({ error: 'Label erforderlich' });
+    const slug = label.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_äöüß]/g, '');
+    if (!slug) return res.status(400).json({ error: 'Ungültiger Name' });
+    const orderRes = await db.execute('SELECT MAX(sort_order) as max FROM filter_categories');
     const nextOrder = Number(orderRes.rows[0]?.max ?? orderRes.rows[0]?.[0] ?? 0) + 1;
-    const result = await db.execute({
-      sql: 'INSERT INTO categories (name, emoji, sort_order) VALUES (?, ?, ?)',
-      args: [trimmed, emoji.trim() || '📁', nextOrder],
+    await db.execute({
+      sql: 'INSERT INTO filter_categories (slug, label, sort_order) VALUES (?, ?, ?)',
+      args: [slug, label.trim(), nextOrder],
     });
-    const id = Number(result.lastInsertRowid);
-    res.status(201).json({ id, name: trimmed, emoji: emoji.trim() || '📁', sort_order: nextOrder });
+    res.status(201).json({ slug, label: label.trim(), options: [] });
   } catch (e) {
     if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Kategorie existiert bereits' });
     console.error(e);
@@ -115,10 +133,11 @@ router.post('/categories', async (req, res) => {
   }
 });
 
-// DELETE /api/categories/:id
-router.delete('/categories/:id', async (req, res) => {
+// DELETE /api/filters/categories/:slug
+router.delete('/filters/categories/:slug', async (req, res) => {
   try {
-    await db.execute({ sql: 'DELETE FROM categories WHERE id = ?', args: [req.params.id] });
+    await db.execute({ sql: 'DELETE FROM filter_options WHERE slug = ?', args: [req.params.slug] });
+    await db.execute({ sql: 'DELETE FROM filter_categories WHERE slug = ?', args: [req.params.slug] });
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -126,7 +145,42 @@ router.delete('/categories/:id', async (req, res) => {
   }
 });
 
-// GET /api/images?view=inbox|<category-name-lowercase>
+// POST /api/filters/options  →  {slug, value}
+router.post('/filters/options', async (req, res) => {
+  try {
+    const { slug, value } = req.body;
+    if (!slug || !value?.trim()) return res.status(400).json({ error: 'slug und value erforderlich' });
+    const orderRes = await db.execute({
+      sql: 'SELECT MAX(sort_order) as max FROM filter_options WHERE slug = ?',
+      args: [slug],
+    });
+    const nextOrder = Number(orderRes.rows[0]?.max ?? orderRes.rows[0]?.[0] ?? 0) + 1;
+    const result = await db.execute({
+      sql: 'INSERT INTO filter_options (slug, value, sort_order) VALUES (?, ?, ?)',
+      args: [slug, value.trim(), nextOrder],
+    });
+    res.status(201).json({ id: Number(result.lastInsertRowid), slug, value: value.trim() });
+  } catch (e) {
+    if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Option existiert bereits' });
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/filters/options/:id
+router.delete('/filters/options/:id', async (req, res) => {
+  try {
+    await db.execute({ sql: 'DELETE FROM filter_options WHERE id = ?', args: [req.params.id] });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Images ────────────────────────────────────────────────────────────────────
+
+// GET /api/images?view=inbox|paare|familie|business
 router.get('/images', async (req, res) => {
   try {
     const { view = 'inbox' } = req.query;
@@ -139,13 +193,7 @@ router.get('/images', async (req, res) => {
          ORDER BY created_at DESC`
       );
     } else {
-      // Look up exact category name from DB (case-preserving)
-      const catRes = await db.execute({
-        sql: `SELECT name FROM categories WHERE LOWER(name) = LOWER(?)`,
-        args: [view],
-      });
-      const artValue = catRes.rows[0]?.name ?? catRes.rows[0]?.[0]
-        ?? (view.charAt(0).toUpperCase() + view.slice(1));
+      const artValue = view.charAt(0).toUpperCase() + view.slice(1);
       result = await db.execute({
         sql: `SELECT i.* FROM images i
               INNER JOIN image_tags it ON i.id = it.image_id
@@ -177,13 +225,18 @@ router.get('/images/counts', async (req, res) => {
     ]);
 
     const inbox = Number(inboxRes.rows[0]?.count ?? inboxRes.rows[0]?.[0] ?? 0);
-    const counts = { inbox };
+    const artCounts = {};
     artRes.rows.forEach((r) => {
       const val = (r.value ?? r[0] ?? '').toLowerCase();
-      counts[val] = Number(r.count ?? r[1] ?? 0);
+      artCounts[val] = Number(r.count ?? r[1] ?? 0);
     });
 
-    res.json(counts);
+    res.json({
+      inbox,
+      paare:    artCounts.paare    || 0,
+      familie:  artCounts.familie  || 0,
+      business: artCounts.business || 0,
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
