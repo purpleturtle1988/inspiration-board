@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import axios from 'axios';
+import { compressImage } from '../utils/compressImage';
 
 export default function AddImageModal({ onClose, onAdded }) {
   const [tab, setTab] = useState('url');
@@ -32,8 +33,9 @@ export default function AddImageModal({ onClose, onAdded }) {
     }
     setLoading(true);
     setError('');
+    const compressed = await compressImage(file).catch(() => file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', compressed);
     try {
       await axios.post('/api/images/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },

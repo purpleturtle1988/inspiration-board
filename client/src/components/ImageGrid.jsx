@@ -1,8 +1,9 @@
 import { memo, useCallback } from 'react';
 import ImageCard from './ImageCard';
 
-const ImageGrid = memo(function ImageGrid({ images, loading, selectedId, onSelect }) {
+const ImageGrid = memo(function ImageGrid({ images, loading, selectedId, onSelect, onOpenLightbox }) {
   const handleSelect = useCallback((image) => () => onSelect(image), [onSelect]);
+  const handleLightbox = useCallback((image) => () => onOpenLightbox(image), [onOpenLightbox]);
 
   if (loading) {
     return (
@@ -32,6 +33,7 @@ const ImageGrid = memo(function ImageGrid({ images, loading, selectedId, onSelec
             image={image}
             selected={selectedId === image.id}
             onSelect={handleSelect(image)}
+            onOpenLightbox={handleLightbox(image)}
           />
         </div>
       ))}
