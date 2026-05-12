@@ -1,26 +1,33 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function LightboxModal({ image, images, onClose, onNavigate }) {
-  const currentIndex = images.findIndex((img) => img.id === image.id);
-
-  const navigate = useCallback((dir) => {
+  // Always compute fresh — no stale closure issues
+  const navigate = (dir) => {
     if (images.length <= 1) return;
+    const idx = images.findIndex((img) => img.id === image.id);
+    if (idx === -1) return;
     const next = dir === 'next'
-      ? (currentIndex + 1) % images.length
-      : (currentIndex - 1 + images.length) % images.length;
+      ? (idx + 1) % images.length
+      : (idx - 1 + images.length) % images.length;
     onNavigate(images[next]);
-  }, [currentIndex, images, onNavigate]);
+  };
+
+  // Keep a ref so the keyboard handler always calls the latest navigate
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'ArrowRight') navigate('next');
-      else if (e.key === 'ArrowLeft') navigate('prev');
+      if (e.key === 'ArrowRight') navigateRef.current('next');
+      else if (e.key === 'ArrowLeft') navigateRef.current('prev');
       else if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [navigate, onClose]);
+  }, [onClose]);
+
+  const currentIndex = images.findIndex((img) => img.id === image.id);
 
   return (
     <div
@@ -29,7 +36,7 @@ export default function LightboxModal({ image, images, onClose, onNavigate }) {
     >
       {/* Close */}
       <button
-        onClick={onClose}
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
         className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 text-white/40 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors z-[70]"
       >
         <X className="w-7 h-7" />

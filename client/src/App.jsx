@@ -156,7 +156,7 @@ export default function App() {
 
   const handleImageUpdated = (updatedImage) => {
     setImages((prev) => prev.map((img) => (img.id === updatedImage.id ? updatedImage : img)));
-    setSelectedImage(updatedImage);
+    setSelectedImage((prev) => (prev?.id === updatedImage.id ? updatedImage : prev));
     // Only refetch counts when Art tags change (those affect sidebar badges)
     const prevArt = JSON.stringify(images.find(i => i.id === updatedImage.id)?.tags?.art || []);
     const nextArt = JSON.stringify(updatedImage.tags?.art || []);
