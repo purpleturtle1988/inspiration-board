@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 
-const TAG_CATEGORIES = [
-  { id: 'art', label: 'Art', single: true, options: ['Paare', 'Familie', 'Business'] },
+const FIXED_CATEGORIES = [
   { id: 'typ', label: 'Typ', single: false, options: ['Sportlich', 'Verschmust', 'Energiegeladen', 'Fröhlich'] },
   { id: 'pose', label: 'Posen', single: false, options: ['Stehend', 'Laufend', 'Sitzend'] },
   { id: 'location', label: 'Location', single: false, options: ['Indoor', 'Outdoor', 'Stadt'] },
 ];
 
-export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
+export default function TagPanel({ image, categories, onUpdate, onDelete, onClose }) {
   const [tags, setTags] = useState(image.tags || {});
   const [notes, setNotes] = useState(image.notes || '');
-  const [saved, setSaved] = useState(false);
   const initialized = useRef(false);
   const saveTimer = useRef(null);
   const latestTags = useRef(tags);
@@ -23,7 +21,6 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
     initialized.current = false;
     setTags(image.tags || {});
     setNotes(image.notes || '');
-    setSaved(false);
   }, [image.id]);
 
   const save = useCallback(async (currentTags, currentNotes) => {
@@ -32,15 +29,13 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
         tags: currentTags,
         notes: currentNotes,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
       onUpdate(res.data);
     } catch (e) {
       console.error(e);
     }
   }, [image.id, onUpdate]);
 
-  // Debounce all saves (tags + notes) to 300ms to avoid rapid API calls
+  // Debounce tag saves to 300ms
   const scheduleSave = useCallback(() => {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
@@ -56,6 +51,7 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
     scheduleSave();
   }, [tags, scheduleSave]);
 
+  // Debounce notes saves to 800ms
   useEffect(() => {
     if (!initialized.current) return;
     clearTimeout(saveTimer.current);
@@ -90,18 +86,16 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
     }
   };
 
+  // Build Art options dynamically from the categories prop
+  const artOptions = (categories || []).map((c) => c.name);
+
   return (
     <aside className="w-68 bg-[#141414] border-l border-white/[0.06] flex flex-col flex-shrink-0 overflow-hidden" style={{width: '17rem'}}>
       <div className="flex items-center justify-between px-5 py-5 border-b border-white/[0.06] flex-shrink-0">
         <h2 className="text-sm font-bold tracking-wide text-white/60 uppercase">Eigenschaften</h2>
-        <div className="flex items-center gap-3">
-          {saved && (
-            <span className="text-xs text-emerald-400 font-medium">✓ Gespeichert</span>
-          )}
-          <button onClick={onClose} className="text-white/25 hover:text-white/70 transition-colors w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/5">
-            ✕
-          </button>
-        </div>
+        <button onClick={onClose} className="text-white/25 hover:text-white/70 transition-colors w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/5">
+          ✕
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -124,11 +118,38 @@ export default function TagPanel({ image, onUpdate, onDelete, onClose }) {
         </div>
 
         <div className="px-4 py-5 space-y-6">
-          {TAG_CATEGORIES.map((cat) => (
+          {/* Art — dynamic from categories */}
+          {artOptions.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider mb-2.5">
+                Art <span className="ml-1.5 normal-case font-normal opacity-60">(1 wählbar)</span>
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {artOptions.map((opt) => {
+                  const selected = (tags.art || []).includes(opt);
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => toggleTag('art', opt, true)}
+                      className={`text-sm px-3 py-1.5 rounded-xl border transition-all ${
+                        selected
+                          ? 'bg-amber-500 border-amber-500 text-black font-semibold'
+                          : 'border-white/10 text-white/40 hover:border-white/25 hover:text-white/80'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Fixed categories: Typ, Posen, Location */}
+          {FIXED_CATEGORIES.map((cat) => (
             <div key={cat.id}>
               <p className="text-[11px] font-semibold text-white/25 uppercase tracking-wider mb-2.5">
                 {cat.label}
-                {cat.single && <span className="ml-1.5 normal-case font-normal opacity-60">(1 wählbar)</span>}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {cat.options.map((opt) => {

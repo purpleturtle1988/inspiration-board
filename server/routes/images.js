@@ -83,7 +83,50 @@ function toPlain(rows) {
   });
 }
 
-// GET /api/images?view=inbox|paare|familie|business
+// GET /api/categories
+router.get('/categories', async (req, res) => {
+  try {
+    const result = await db.execute('SELECT * FROM categories ORDER BY sort_order ASC, id ASC');
+    res.json(result.rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/categories
+router.post('/categories', async (req, res) => {
+  try {
+    const { name, emoji = '📁' } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Name erforderlich' });
+    const trimmed = name.trim();
+    const orderRes = await db.execute('SELECT MAX(sort_order) as max FROM categories');
+    const nextOrder = Number(orderRes.rows[0]?.max ?? orderRes.rows[0]?.[0] ?? 0) + 1;
+    const result = await db.execute({
+      sql: 'INSERT INTO categories (name, emoji, sort_order) VALUES (?, ?, ?)',
+      args: [trimmed, emoji.trim() || '📁', nextOrder],
+    });
+    const id = Number(result.lastInsertRowid);
+    res.status(201).json({ id, name: trimmed, emoji: emoji.trim() || '📁', sort_order: nextOrder });
+  } catch (e) {
+    if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Kategorie existiert bereits' });
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/categories/:id
+router.delete('/categories/:id', async (req, res) => {
+  try {
+    await db.execute({ sql: 'DELETE FROM categories WHERE id = ?', args: [req.params.id] });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/images?view=inbox|<category-name-lowercase>
 router.get('/images', async (req, res) => {
   try {
     const { view = 'inbox' } = req.query;
@@ -96,7 +139,13 @@ router.get('/images', async (req, res) => {
          ORDER BY created_at DESC`
       );
     } else {
-      const artValue = view.charAt(0).toUpperCase() + view.slice(1);
+      // Look up exact category name from DB (case-preserving)
+      const catRes = await db.execute({
+        sql: `SELECT name FROM categories WHERE LOWER(name) = LOWER(?)`,
+        args: [view],
+      });
+      const artValue = catRes.rows[0]?.name ?? catRes.rows[0]?.[0]
+        ?? (view.charAt(0).toUpperCase() + view.slice(1));
       result = await db.execute({
         sql: `SELECT i.* FROM images i
               INNER JOIN image_tags it ON i.id = it.image_id
@@ -128,18 +177,13 @@ router.get('/images/counts', async (req, res) => {
     ]);
 
     const inbox = Number(inboxRes.rows[0]?.count ?? inboxRes.rows[0]?.[0] ?? 0);
-    const artCounts = {};
+    const counts = { inbox };
     artRes.rows.forEach((r) => {
       const val = (r.value ?? r[0] ?? '').toLowerCase();
-      artCounts[val] = Number(r.count ?? r[1] ?? 0);
+      counts[val] = Number(r.count ?? r[1] ?? 0);
     });
 
-    res.json({
-      inbox,
-      paare: artCounts.paare || 0,
-      familie: artCounts.familie || 0,
-      business: artCounts.business || 0,
-    });
+    res.json(counts);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
